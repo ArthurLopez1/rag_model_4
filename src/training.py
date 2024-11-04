@@ -4,9 +4,13 @@ from src.file_handler import load_document, split_document
 from src.vectorstore import VectorStoreManager
 
 def train_on_document(file_path):
-    # Load and split document
-    document = load_document(file_path)
-    document_chunks = split_document(document)
+    # Load documents
+    documents = load_document(file_path)
+    
+    # Split each document into chunks
+    document_chunks = []
+    for document in documents:
+        document_chunks.extend(split_document(document))
     
     # Extract the text content from each chunk
     chunk_texts = [chunk.page_content for chunk in document_chunks]

@@ -4,7 +4,7 @@ import operator
 from typing import List, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, END
 from llm_models import llm
 from vectorstore import VectorStoreManager
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -109,50 +109,20 @@ class GraphState(TypedDict):
     loop_step: int
     documents: List[str]
 
-# Functions for workflow
-def initialize_graph(config):
-    """Define graph, nodes, and edges as per the logic."""
-    graph = StateGraph(GraphState)
-
-    # Add nodes
-    graph.add_node("websearch", web_search)  # web search
-    graph.add_node("retrieve", retrieve)  # retrieve
-    graph.add_node("grade_documents", grade_documents)  # grade documents
-    graph.add_node("generate", generate)  # generate
-
-    # Build graph
-    graph.set_conditional_entry_point(route_question, {
-        "websearch": "websearch",
-        "vectorstore": "retrieve",
-    })
-    graph.add_edge("websearch", "generate")
-    graph.add_edge("retrieve", "grade_documents")
-    graph.add_conditional_edges("grade_documents", decide_to_generate, {
-        "websearch": "websearch",
-        "generate": "generate",
-    })
-    graph.add_conditional_edges("generate", grade_generation_v_documents_and_question, {
-        "not supported": "generate",
-        "useful": END,
-        "not useful": "websearch",
-        "max retries": END,
-    })
-
-    # Compile the graph
-    return graph.compile()
-
 # Implementations of nodes
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-def retrieve(state):
-    """Retrieve documents from vectorstore."""
+def retrieve(state: Dict[str, Any], config: Dict[str, Any]):
+    """Retrieve documents from vectorstore using embeddings."""
     print("---RETRIEVE---")
-    question = state["question"]        
-    documents = VectorStoreManager.retrieve_documents(question)  # Assuming 'retriever' is defined elsewhere
-    return {"documents": documents}
+    question = state["question"]
+    vector_store = VectorStoreManager()
+    results = vector_store.retrieve_documents(question)
+    state["documents"] = results
+    return state
 
-def generate(state):
+def generate(state: Dict[str, Any], config: Dict[str, Any]):
     """Generate answer using RAG on retrieved documents."""
     print("---GENERATE---")
     question = state["question"]
@@ -161,7 +131,9 @@ def generate(state):
     docs_txt = format_docs(documents)
     rag_prompt_formatted = rag_prompt.format(context=docs_txt, question=question)
     generation = llm.invoke([HumanMessage(content=rag_prompt_formatted)])
-    return {"generation": generation, "loop_step": loop_step + 1}
+    state["generation"] = generation.content
+    state["loop_step"] = loop_step + 1
+    return state
 
 def grade_documents(state):
     """Grade the relevance of retrieved documents to the question."""
@@ -188,7 +160,8 @@ def grade_documents(state):
             print("---GRADE: DOCUMENT NOT RELEVANT---")
 
     web_search = "No" if relevant_doc_found else "Yes"
-    return {"documents": filtered_docs, "web_search": web_search}
+    state["documents"] = filtered_docs
+    return state
 
 def web_search(state):
     """Web search based on the question."""
@@ -202,27 +175,29 @@ def web_search(state):
     return {"documents": documents}
 
 def route_question(state):
-    """Route question to web search or RAG."""
+    """
+    Route question to web search or RAG
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        str: Next node to call
+    """
+
     print("---ROUTE QUESTION---")
-    route_question = llm.invoke(
+    route_question = llm_json_mode.invoke(
         [SystemMessage(content=router_instructions)]
         + [HumanMessage(content=state["question"])]
     )
     source = json.loads(route_question.content)["datasource"]
-    return "websearch" if source == "websearch" else "retrieve"
-
-def decide_to_generate(state):
-    """Determine whether to generate an answer or run web search."""
-    print("---ASSESS GRADED DOCUMENTS---")
-    web_search = state["web_search"]
-    filtered_documents = state["documents"]
-
-    if web_search == "Yes":
-        print("---DECISION: INCLUDE WEB SEARCH---")
+    if source == "websearch":
+        print("---ROUTE QUESTION TO WEB SEARCH---")
         return "websearch"
-    else:
-        print("---DECISION: GENERATE---")
-        return "generate"
+    elif source == "vectorstore":
+        print("---ROUTE QUESTION TO RAG---")
+        return "vectorstore"
+
 
 def grade_generation_v_documents_and_question(state):
     """Determine whether the generation is grounded in the document and answers question."""
@@ -260,7 +235,51 @@ def grade_answer(state):
     score = json.loads(result.content)
     return score
 
+def initialize_graph(config):
+    """Define graph, nodes, and edges as per the logic."""
+    workflow = StateGraph(GraphState)
+
+    # Add nodes
+    workflow.add_node("websearch", web_search)  # web search
+    workflow.add_node("retrieve", retrieve)  # retrieve
+    workflow.add_node("grade_documents", grade_documents)  # grade documents
+    workflow.add_node("generate", generate)  # generate
+
+    # Build graph
+    workflow.set_conditional_entry_point(
+        route_question,
+        {
+            "websearch": "websearch",
+            "vectorstore": "retrieve",
+        },
+    )
+    workflow.add_edge("websearch", "generate")
+    workflow.add_edge("retrieve", "grade_documents")
+    workflow.add_conditional_edges(
+        "grade_documents",
+        decide_to_generate,
+        {
+            "websearch": "websearch",
+            "generate": "generate",
+        },
+    )
+    workflow.add_conditional_edges(
+        "generate",
+        grade_generation_v_documents_and_question,
+        {
+            "not supported": "generate",
+            "useful": END,
+            "not useful": "websearch",
+            "max retries": END,
+        },
+    )
+
+    return workflow.compile()
+
 def run_workflow(state: Dict[str, Any], config: Dict[str, Any]):
     """Run the main workflow."""
     graph = initialize_graph(config)
-    return graph(state)
+    events = []
+    for event in graph.stream(state, stream_mode="values"):
+        events.append(event)
+    return events

@@ -39,6 +39,15 @@ def split_document(document: Document, chunk_size: int = 2000, chunk_overlap: in
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return text_splitter.split_documents([document])
 
+def load_document(file_path: str):
+    """
+    Load a document from a file path. Currently supports PDF files.
+    """
+    if file_path.lower().endswith('.pdf'):
+        return parse_pdf_with_pypdf(file_path)
+    else:
+        raise ValueError("Unsupported file format. Only PDF files are supported.")
+
 # Example usage
 if __name__ == "__main__":
     pdf_path = "./data/ersattningsmodell_vaders_2019.pdf"

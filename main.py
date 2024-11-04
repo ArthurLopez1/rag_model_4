@@ -1,6 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
 from src.llm_models import llm
 from src.vectorstore import VectorStoreManager
-from src.components import initialize_graph
+from src.components import run_workflow, initialize_graph
 from src.training import train_on_document
 from settings import Config
 
@@ -12,14 +16,20 @@ def main():
     # Initialize the vector store for querying
     vector_store = VectorStoreManager()
     
-    # Query the vector store
-    query = "Explain the compensation model for repeated snowfalls."
-    results = vector_store.retrieve_documents(query)
+    # Define initial state and configuration
+    state = {
+        "question": "Vad säger dokumentet om MESAN?",
+        "max_retries": 3
+    }
+    config = {}
+
+    # Run the workflow
+    events = run_workflow(state, config)
 
     # Output results
     print("Query Results:")
-    for idx, result in enumerate(results, start=1):
-        print(f"{idx}. {result['content']} (Score: {result['score']})")
+    for event in events:
+        print(event)
 
 if __name__ == "__main__":
     main()
