@@ -12,9 +12,7 @@ TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0))
 FORMAT = os.getenv("LLM_FORMAT", None)
 
 def initialize_llm(model_name=MODEL_NAME, temperature=TEMPERATURE, format=None):
-    """
-    Initialize the language model with the given parameters.
-    """
+
     try:
         if format:
             llm = ChatOllama(model=model_name, temperature=temperature, format=format)

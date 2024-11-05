@@ -1,18 +1,19 @@
 # src/components.py
+import os
 import json
 import operator
 from typing import List, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from llm_models import llm
 from vectorstore import VectorStoreManager
+from llm_models import initialize_llm
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.schema import Document
 from IPython.display import Image, display
 
 # Prompt and instructions setup
-router_instructions = """You are an expert at Swedish and winter road maintenance employed by Klimator.
+router_instructions = """You are an expert at Swedish, winter road regislations and methereology.
 
 The vectorstore contains documents related to meteorological facts, winter road maintenance laws, Road Weather Forecast, and related fields of study.
 
@@ -109,26 +110,61 @@ class GraphState(TypedDict):
     loop_step: int
     documents: List[str]
 
-# Implementations of nodes
+# nodes
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-def retrieve(state: Dict[str, Any], config: Dict[str, Any]):
-    """Retrieve documents from vectorstore using embeddings."""
+#def retrieve(state):
+    """
+    Retrieve documents from vectorstore
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        state (dict): New key added to state, documents, that contains retrieved documents
+    """
     print("---RETRIEVE---")
     question = state["question"]
-    vector_store = VectorStoreManager()
-    results = vector_store.retrieve_documents(question)
-    state["documents"] = results
-    return state
+    vec = VectorStoreManager()
+    documents = vec.invoke(question)
+    return {"documents": documents}
 
-def generate(state: Dict[str, Any], config: Dict[str, Any]):
-    """Generate answer using RAG on retrieved documents."""
+def retrieve(state):
+    """
+    Retrieve documents from vectorstore
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        state (dict): New key added to state, documents, that contains retrieved documents
+    """
+    print("---RETRIEVE---")
+    question = state["question"]
+
+    # Write retrieved documents to documents key in state
+    documents = VectorStoreManager().retrieve_documents(question)
+    return {"documents": documents}
+
+def generate(state):
+    """
+    Generate answer using RAG on retrieved documents
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        state (dict): New key added to state, generation, that contains LLM generation
+    """
     print("---GENERATE---")
     question = state["question"]
     documents = state["documents"]
     loop_step = state.get("loop_step", 0)
+
+    # RAG generation
     docs_txt = format_docs(documents)
+    llm = initialize_llm()
     rag_prompt_formatted = rag_prompt.format(context=docs_txt, question=question)
     generation = llm.invoke([HumanMessage(content=rag_prompt_formatted)])
     state["generation"] = generation.content
@@ -142,25 +178,26 @@ def grade_documents(state):
     documents = state["documents"]
     filtered_docs = []
     relevant_doc_found = False
-
-    for d in documents:
+    llm_json_mode = initialize_llm(format="json")
+    for doc, score in documents:
         doc_grader_prompt_formatted = doc_grader_prompt.format(
-            document=d.page_content, question=question
+            document=doc, question=question
         )
-        result = llm.invoke(
+        result = llm_json_mode.invoke(
             [SystemMessage(content=doc_grader_instructions)]
             + [HumanMessage(content=doc_grader_prompt_formatted)]
         )
         grade = json.loads(result.content)["binary_score"]
         if grade.lower() == "yes":
             print("---GRADE: DOCUMENT RELEVANT---")
-            filtered_docs.append(d)
+            filtered_docs.append((doc, score))
             relevant_doc_found = True
         else:
             print("---GRADE: DOCUMENT NOT RELEVANT---")
 
     web_search = "No" if relevant_doc_found else "Yes"
     state["documents"] = filtered_docs
+    state["web_search"] = web_search
     return state
 
 def web_search(state):
@@ -174,6 +211,8 @@ def web_search(state):
     documents.append(web_results)
     return {"documents": documents}
 
+
+# edges
 def route_question(state):
     """
     Route question to web search or RAG
@@ -186,54 +225,108 @@ def route_question(state):
     """
 
     print("---ROUTE QUESTION---")
-    route_question = llm_json_mode.invoke(
-        [SystemMessage(content=router_instructions)]
-        + [HumanMessage(content=state["question"])]
-    )
-    source = json.loads(route_question.content)["datasource"]
-    if source == "websearch":
-        print("---ROUTE QUESTION TO WEB SEARCH---")
-        return "websearch"
-    elif source == "vectorstore":
-        print("---ROUTE QUESTION TO RAG---")
-        return "vectorstore"
 
-
-def grade_generation_v_documents_and_question(state):
-    """Determine whether the generation is grounded in the document and answers question."""
-    print("---CHECK HALLUCINATIONS---")
+    llm_json_mode = initialize_llm(format="json")
     question = state["question"]
-    documents = state["documents"]
-    generation = state["generation"]
-    hallucination_grader_prompt_formatted = hallucination_grader_prompt.format(
-        documents=format_docs(documents), generation=generation.content
+    route_question_prompt_formatted = router_instructions.format(question=question)
+    result = llm_json_mode.invoke(
+        [SystemMessage(content=router_instructions)]
+        + [HumanMessage(content=route_question_prompt_formatted)]
     )
-    result = llm.invoke(
+    try:
+        response_content = json.loads(result.content)
+        print(f"Response content: {response_content}")  # Debugging line
+        source = response_content["datasource"]
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        print(f"Response content: {result.content}")
+        raise
+    except KeyError as e:
+        print(f"KeyError: {e}")
+        print(f"Response content: {response_content}")
+        raise
+    state["datasource"] = source
+    return state
+    
+def decide_to_generate(state):
+    """
+    Determines whether to generate an answer, or add web search
+
+    Args:
+        state (dict): The current graph state
+
+    Returns:
+        str: Binary decision for next node to call
+    """
+
+    print("---ASSESS GRADED DOCUMENTS---")
+    question = state["question"]
+    web_search = state["web_search"]
+    filtered_documents = state["documents"]
+
+    if web_search == "Yes":
+        # All documents have been filtered check_relevance
+        # We will re-generate a new query
+        print(
+            "---DECISION: NOT ALL DOCUMENTS ARE RELEVANT TO QUESTION, INCLUDE WEB SEARCH---"
+        )
+        return "websearch"
+    else:
+        # We have relevant documents, so generate answer
+        print("---DECISION: GENERATE---")
+        return "generate"
+
+
+def grade_generation_v_documents_and_question(state: Dict[str, Any], config: Dict[str, Any]):
+    """Grade the generated answer against the retrieved documents and the question."""
+    print("---GRADE GENERATION vs DOCUMENTS AND QUESTION---")
+    question = state["question"]
+    generation = state["generation"]
+    documents = state["documents"]
+    max_retries = state["max_retries"]
+    loop_step = state.get("loop_step", 0)
+    llm_json_mode = initialize_llm(format="json")
+
+    # Format the documents for grading
+    docs_txt = format_docs(documents)
+    hallucination_grader_prompt_formatted = hallucination_grader_prompt.format(
+        documents=docs_txt, generation=generation
+    )
+    result = llm_json_mode.invoke(
         [SystemMessage(content=hallucination_grader_instructions)]
         + [HumanMessage(content=hallucination_grader_prompt_formatted)]
     )
-    hall_score = json.loads(result.content)
-    state["hallucination_score"] = hall_score["binary_score"]
-    state["hallucination_explanation"] = hall_score["explanation"]
-    return {
-        "score": hall_score["binary_score"],
-        "explanation": hall_score["explanation"],
-    }
+    grade = json.loads(result.content)["binary_score"]
 
-def grade_answer(state):
-    """Grade student answer against the question."""
-    print("---GRADE STUDENT ANSWER---")
-    question = state["question"]
-    generation = state["generation"]
-    answer_grader_prompt_formatted = answer_grader_prompt.format(
-        question=question, generation=generation.content
-    )
-    result = llm.invoke(
-        [SystemMessage(content=answer_grader_instructions)]
+    # Check hallucination
+    if grade == "yes":
+        print("---DECISION: GENERATION IS GROUNDED IN DOCUMENTS---")
+        # Check question-answering
+        print("---GRADE GENERATION vs QUESTION---")
+        # Test using question and generation from above
+        answer_grader_prompt_formatted = answer_grader_prompt.format(
+            question=question, generation=generation
+        )
+        result = llm_json_mode.invoke(
+            [SystemMessage(content=answer_grader_instructions)]
             + [HumanMessage(content=answer_grader_prompt_formatted)]
-    )
-    score = json.loads(result.content)
-    return score
+        )
+        grade = json.loads(result.content)["binary_score"]
+        if grade == "yes":
+            print("---DECISION: GENERATION ADDRESSES QUESTION---")
+            return "useful"
+        elif loop_step <= max_retries:
+            print("---DECISION: GENERATION DOES NOT ADDRESS QUESTION---")
+            return "not useful"
+        else:
+            print("---DECISION: MAX RETRIES REACHED---")
+            return "max retries"
+    elif loop_step <= max_retries:
+        print("---DECISION: GENERATION IS NOT GROUNDED IN DOCUMENTS, RE-TRY---")
+        return "not supported"
+    else:
+        print("---DECISION: MAX RETRIES REACHED---")
+        return "max retries"
 
 def initialize_graph(config):
     """Define graph, nodes, and edges as per the logic."""
@@ -274,7 +367,16 @@ def initialize_graph(config):
         },
     )
 
-    return workflow.compile()
+    # Compile the graph
+    graph = workflow.compile()
+
+    # Save the Mermaid graph image to the assets folder
+    image_path = os.path.join("assets", "workflow_graph.png")
+    graph_image = graph.get_graph().draw_mermaid_png()
+    with open(image_path, "wb") as f:
+        f.write(graph_image)
+
+    return graph
 
 def run_workflow(state: Dict[str, Any], config: Dict[str, Any]):
     """Run the main workflow."""

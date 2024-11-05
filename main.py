@@ -18,7 +18,7 @@ def main():
     
     # Define initial state and configuration
     state = {
-        "question": "Vad säger dokumentet om MESAN?",
+        "question": "På vilket sätt används halvtimmesdata för att skapa timbaserade väderbeskrivningar?",
         "max_retries": 3
     }
     config = {}
