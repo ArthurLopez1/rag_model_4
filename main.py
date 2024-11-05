@@ -18,7 +18,7 @@ def main():
     
     # Define initial state and configuration
     state = {
-        "question": "Vilka specifika väderförhållanden krävs för att snödrev ska klassas som ett utfall?",
+        "question": "Hur ofta analyseras väderdata i VädErs-modellen?",
         "max_retries": 3
     }
     config = {}

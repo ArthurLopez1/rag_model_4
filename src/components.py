@@ -1,13 +1,13 @@
 # src/components.py
 import os
 import json
-import operator
 from typing import List, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from vectorstore import VectorStoreManager
-from llm_models import initialize_llm
+from .file_handler import load_document, split_document
+from .vectorstore import VectorStoreManager
+from .llm_models import initialize_llm
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.schema import Document
 from IPython.display import Image, display
@@ -27,7 +27,7 @@ If the document contains keyword(s) or semantic meaning related to the question,
 
 doc_grader_prompt = """Here is the retrieved document: \n\n {document} \n\n Here is the user question: \n\n {question}. 
 
-This carefully and objectively assess whether the document contains at least some information that is relevant to the question.
+Assess whether the document contains at least some information that is relevant to the question.
 
 Return JSON with a single key, binary_score, that is 'yes' or 'no' score to indicate whether the document contains at least some information that is relevant to the question."""
 
@@ -61,7 +61,7 @@ Here is the grade criteria to follow:
 
 Score:
 
-A score of yes means that the student's answer meets all of the criteria. This is the highest (best) score. 
+A score of yes means that the student's answer meets most of the criteria. This is the highest (best) score. 
 
 A score of no means that the student's answer does not meet all of the criteria. This is the lowest possible score you can give.
 
@@ -83,11 +83,11 @@ Here is the grade criteria to follow:
 
 Score:
 
-A score of yes means that the student's answer meets all of the criteria. This is the highest (best) score. 
+A score of yes means that the student's answer meets most of the criteria. This is the highest (best) score. 
 
 The student can receive a score of yes if the answer contains extra information that is not explicitly asked for in the question.
 
-A score of no means that the student's answer does not meet all of the criteria. This is the lowest possible score you can give.
+A score of no means that the student's answer does not meet of the criteria at all. This is the lowest possible score you can give.
 
 Explain your reasoning in a step-by-step manner to ensure your reasoning and conclusion are correct. 
 

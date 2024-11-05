@@ -16,3 +16,4 @@ langgraph
 Ipython
 ipykernel
 langchain-huggingface
+sentence_transformers

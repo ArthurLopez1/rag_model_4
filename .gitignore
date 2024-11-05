@@ -172,4 +172,7 @@ cython_debug/
 *.pdf
 
 # index files
+vector_store.index
 *.index
+
+*.pkl

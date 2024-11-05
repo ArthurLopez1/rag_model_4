@@ -21,7 +21,7 @@ class Config:
         # Set environment variables
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_PROJECT"] = "local-llama32-rag"
+        os.environ["LANGCHAIN_PROJECT"] = "local_rag_prototype"
         
         # Check for missing environment variables
         self._check_env_vars()
@@ -32,4 +32,3 @@ class Config:
         for var in required_vars:
             if getattr(self, var) is None:
                 raise EnvironmentError(f"Missing required environment variable: {var}")
-
