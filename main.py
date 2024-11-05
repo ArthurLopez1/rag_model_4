@@ -18,7 +18,7 @@ def main():
     
     # Define initial state and configuration
     state = {
-        "question": "På vilket sätt används halvtimmesdata för att skapa timbaserade väderbeskrivningar?",
+        "question": "Vilka specifika väderförhållanden krävs för att snödrev ska klassas som ett utfall?",
         "max_retries": 3
     }
     config = {}
@@ -27,9 +27,15 @@ def main():
     events = run_workflow(state, config)
 
     # Output results
-    print("Query Results:")
-    for event in events:
-        print(event)
+    #print("Query Results:")
+    #for event in events:
+    #    print(event)
+
+    # Output the final generated answer
+    final_state = events[-1] if events else {}
+    generated_answer = final_state.get("generation", "No answer generated.")
+    print("Final Generated Answer:")
+    print(generated_answer)
 
 if __name__ == "__main__":
     main()

@@ -13,9 +13,9 @@ from langchain.schema import Document
 from IPython.display import Image, display
 
 # Prompt and instructions setup
-router_instructions = """You are an expert at Swedish, winter road regislations and methereology.
+router_instructions = """You are an expert at the Swedish language, Trafikverket (Swedish Transport Administration) and methereology.
 
-The vectorstore contains documents related to meteorological facts, winter road maintenance laws, Road Weather Forecast, and related fields of study.
+The vectorstore contains documents related to weather data collection, weather situation analyses, compensation calculation, and related fields of study.
 
 Use the vectorstore for questions on these topics. For all else, and especially for current events, use web-search.
 
@@ -97,6 +97,10 @@ answer_grader_prompt = """QUESTION: \n\n {question} \n\n STUDENT ANSWER: {genera
 
 Return JSON with two keys, binary_score is 'yes' or 'no' score to indicate whether the STUDENT ANSWER meets the criteria. And a key, explanation, that contains an explanation of the score."""
 
+# Initialize the LLM once
+llm = initialize_llm()
+llm_json_mode = initialize_llm(format="json")
+
 # Web Search Tool
 web_search_tool = TavilySearchResults(k=3)
 
@@ -112,23 +116,27 @@ class GraphState(TypedDict):
 
 # nodes
 def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
-
-#def retrieve(state):
     """
-    Retrieve documents from vectorstore
-
-    Args:
-        state (dict): The current graph state
-
+    Format documents for display by joining them with double newlines.
+    
+    Parameters:
+        docs (list): List of documents, where each document is expected to be 
+                     a tuple (doc, score).
+    
     Returns:
-        state (dict): New key added to state, documents, that contains retrieved documents
+        str: Formatted string of documents.
     """
-    print("---RETRIEVE---")
-    question = state["question"]
-    vec = VectorStoreManager()
-    documents = vec.invoke(question)
-    return {"documents": documents}
+    formatted_docs = []
+    
+    for item in docs:
+        # Check if item has at least one element (the document text)
+        if isinstance(item, tuple) and len(item) >= 1:
+            doc = item[0]  # Get the document content
+            formatted_docs.append(doc)
+        else:
+            print(f"Skipping improperly formatted item in docs: {item}")
+    
+    return "\n\n".join(formatted_docs)
 
 def retrieve(state):
     """
@@ -147,7 +155,7 @@ def retrieve(state):
     documents = VectorStoreManager().retrieve_documents(question)
     return {"documents": documents}
 
-def generate(state):
+def generate(state: Dict[str, Any], config: Dict[str, Any]):
     """
     Generate answer using RAG on retrieved documents
 
@@ -178,7 +186,6 @@ def grade_documents(state):
     documents = state["documents"]
     filtered_docs = []
     relevant_doc_found = False
-    llm_json_mode = initialize_llm(format="json")
     for doc, score in documents:
         doc_grader_prompt_formatted = doc_grader_prompt.format(
             document=doc, question=question
@@ -213,20 +220,9 @@ def web_search(state):
 
 
 # edges
-def route_question(state):
-    """
-    Route question to web search or RAG
-
-    Args:
-        state (dict): The current graph state
-
-    Returns:
-        str: Next node to call
-    """
-
+def route_question(state: Dict[str, Any], config: Dict[str, Any]):
+    """Route the question to the appropriate datasource."""
     print("---ROUTE QUESTION---")
-
-    llm_json_mode = initialize_llm(format="json")
     question = state["question"]
     route_question_prompt_formatted = router_instructions.format(question=question)
     result = llm_json_mode.invoke(
@@ -246,7 +242,7 @@ def route_question(state):
         print(f"Response content: {response_content}")
         raise
     state["datasource"] = source
-    return state
+    return source  # Return the next node to call as a string
     
 def decide_to_generate(state):
     """
@@ -285,7 +281,6 @@ def grade_generation_v_documents_and_question(state: Dict[str, Any], config: Dic
     documents = state["documents"]
     max_retries = state["max_retries"]
     loop_step = state.get("loop_step", 0)
-    llm_json_mode = initialize_llm(format="json")
 
     # Format the documents for grading
     docs_txt = format_docs(documents)
