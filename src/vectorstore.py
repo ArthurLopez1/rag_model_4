@@ -47,7 +47,7 @@ class VectorStoreManager:
         self._save_index()
         self._save_doc_mapping()
 
-    def retrieve_documents(self, query: str, top_k: int = 3) -> List[Tuple[str, float]]:
+    def retrieve_documents(self, query: str, top_k: int = 5) -> List[Tuple[str, float]]:
         """
         Retrieve the top_k most similar documents for a given query.
         """

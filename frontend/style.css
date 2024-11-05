@@ -1,0 +1,124 @@
+:root {
+    /* modular scale */
+    --ratio: 1.4;
+    --s-5: calc(var(--s-4) / var(--ratio));
+    --s-4: calc(var(--s-3) / var(--ratio));
+    --s-3: calc(var(--s-2) / var(--ratio));
+    --s-2: calc(var(--s-1) / var(--ratio));
+    --s-1: calc(var(--s0) / var(--ratio));
+    --s0: 1rem;
+    --s1: calc(var(--s0) * var(--ratio));
+    --s2: calc(var(--s1) * var(--ratio));
+    --s3: calc(var(--s2) * var(--ratio));
+    --s4: calc(var(--s3) * var(--ratio));
+    --s5: calc(var(--s4) * var(--ratio));
+
+    /* Adjusted Color Palette for a lighter theme */
+    --primaryColor: #FFFFFF; /* Darker gray for primary text */
+    --secondaryColor: #1D2B36; /* Orange for highlights and buttons */
+    --textColor_1: #0F0F14;
+    --backgroundColor: #F4F7FA; /* Light background */
+    --backgroundColorSecondary: #A8A69A; /* White for main content background */
+    --inputBackgroundColor: #F0F0F0; /* Light gray for inputs */
+    --borderColor: #D1D5DB; /* Light gray for borders */
+    --buttonColor: #0F0F14; /* Default button color */
+    --buttonHoverColor: #3E3C3C; /* Button hover color */
+}
+
+body {
+    font-family: "Roboto", sans-serif;
+    color: var(--textColor_1);
+    background-color: var(--backgroundColor);
+}
+
+/* General spacing */
+body *+* {
+    margin-top: var(--s-2);
+}
+
+/* Header styling */
+h1, h2 {
+    color: var(--primaryColor);
+    font-weight: bold;
+}
+
+h1 {
+    font-size: var(--s3);
+}
+
+h2 {
+    font-size: var(--s2);
+}
+
+h3, p {
+    color: var(--textColor);
+    font-family: "Roboto", sans-serif;
+}
+
+p {
+    font-size: var(--s0);
+}
+
+h3 {
+    font-size: var(--s1);
+}
+
+/* Sidebar styling */
+.stSidebar {
+    background-color: var(--backgroundColorSecondary);
+}
+
+/* Buttons */
+button, .stButton button {
+    background-color: var(--buttonColor);
+    color: var(--primaryColor);
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: var(--s1);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover, .stButton button:hover {
+    background-color: var(--buttonHoverColor);
+}
+
+/* Input field styling */
+.stTextInput, .stNumberInput, .stTextArea {
+    background-color: var(--inputBackgroundColor);
+    color: var(--textColor);
+    border: 1px solid var(--borderColor);
+    padding: 0.5rem;
+    border-radius: 5px;
+}
+
+/* Main container layout */
+.stAppViewMain {
+    background-color: var(--backgroundColor);
+    padding: var(--s1);
+}
+
+.stAppViewBlockContainer {
+    background-color: var(--backgroundColorSecondary);
+    padding: var(--s2);
+    max-width: 1200px;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom styling for stMetric and columns */
+[data-testid|="stMetric"] {
+    margin-top: 0;
+    color: var(--primaryColor);
+}
+
+[data-testid|="column"] {
+    margin-top: var(--s-1);
+    margin-left: var(--s1);
+}
+
+/* Hide Streamlit header */
+[data-testid|="stHeader"] {
+    display: none;
+}
