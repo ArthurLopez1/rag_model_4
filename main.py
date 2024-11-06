@@ -1,7 +1,6 @@
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-
+import logging
+from venv import logger
 from src.llm_models import llm
 from src.vectorstore import VectorStoreManager
 from src.components import run_workflow, initialize_graph
@@ -21,7 +20,7 @@ def main():
         "question": "Hur ofta analyseras väderdata i VädErs-modellen?",
         "max_retries": 3
     }
-    config = {}
+    config = Config()  # Ensure config is initialized correctly
 
     # Run the workflow
     events = run_workflow(state, config)
@@ -36,6 +35,7 @@ def main():
     generated_answer = final_state.get("generation", "No answer generated.")
     print("Final Generated Answer:")
     print(generated_answer)
+    logger.info(f"Final state: {final_state}")
 
 if __name__ == "__main__":
     main()

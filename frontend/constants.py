@@ -1,12 +1,8 @@
 
 class Color:
-    PRIMARY="#050505"
-    BACKGROUND="#F2F2F2"
+    BLACK="0F0F14"
+    WHITE="#FFFFFF"
     
-    RED0="#F27979"
-    RED1="#F25757"
-    RED2="#F20505"
-    RED3="#D90416"
-    RED4="#A60F1B"
-    RED5="#73141B"
-    RED6="#401519"
+    LIGHT_BEIGE="#F5F5F5"
+    BEIGE="#A8A69A"
+    BLUE="#055158"

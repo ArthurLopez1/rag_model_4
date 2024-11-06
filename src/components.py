@@ -1,13 +1,14 @@
 # src/components.py
 import os
 import json
+import logging
 from typing import List, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from .file_handler import load_document, split_document
-from .vectorstore import VectorStoreManager
-from .llm_models import initialize_llm
+from file_handler import load_document, split_document
+from vectorstore import VectorStoreManager
+from llm_models import initialize_llm
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.schema import Document
 from IPython.display import Image, display
@@ -373,10 +374,17 @@ def initialize_graph(config):
 
     return graph
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def run_workflow(state: Dict[str, Any], config: Dict[str, Any]):
     """Run the main workflow."""
     graph = initialize_graph(config)
     events = []
+    logger.info(f"Initial state: {state}")
+    logger.info(f"Config: {config}")
     for event in graph.stream(state, stream_mode="values"):
         events.append(event)
+    logger.info(f"Events: {events}")
     return events

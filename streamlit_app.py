@@ -1,4 +1,5 @@
 from pathlib import Path
+from venv import logger
 import streamlit as st
 from src.components import run_workflow
 from src.vectorstore import VectorStoreManager
@@ -33,8 +34,11 @@ if st.sidebar.button("Train Model"):
 
 # Main interface for asking questions
 st.header("Ask a question about the document:")
-question = st.text_input("Enter your question here:")
-max_retries = st.number_input("Max Retries", min_value=1, max_value=10, value=3)
+st.markdown('<div data-testid="question-label">Enter your question here:</div>', unsafe_allow_html=True)
+question = st.text_input("", key="question_input")
+st.markdown('<div data-testid="max-retries-label">Max Retries</div>', unsafe_allow_html=True)
+max_retries = st.number_input("", min_value=1, max_value=10, value=3, key="max_retries_input")
+
 
 if st.button("Get Answer"):
     # Define initial state and configuration
@@ -51,3 +55,4 @@ if st.button("Get Answer"):
     generated_answer = final_state.get("generation", "No answer generated.")
     st.write("Final Generated Answer:")
     st.write(generated_answer)
+    logger.info(f"Final state: {final_state}")

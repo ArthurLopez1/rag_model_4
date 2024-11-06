@@ -13,22 +13,20 @@
     --s4: calc(var(--s3) * var(--ratio));
     --s5: calc(var(--s4) * var(--ratio));
 
-    /* Adjusted Color Palette for a lighter theme */
-    --primaryColor: #FFFFFF; /* Darker gray for primary text */
-    --secondaryColor: #1D2B36; /* Orange for highlights and buttons */
-    --textColor_1: #0F0F14;
-    --backgroundColor: #F4F7FA; /* Light background */
-    --backgroundColorSecondary: #A8A69A; /* White for main content background */
-    --inputBackgroundColor: #F0F0F0; /* Light gray for inputs */
-    --borderColor: #D1D5DB; /* Light gray for borders */
-    --buttonColor: #0F0F14; /* Default button color */
-    --buttonHoverColor: #3E3C3C; /* Button hover color */
+    --black: #0F0F14; 
+    --white: #FFFFFF; 
+    --beige: #A8A69A; 
+    --lightBeige: #F0F0F0; 
+    --blue: #055158;
+    --borderColor: #D1D5DB; 
+    --buttonColor: #0F0F14; 
+    --buttonHoverColor: #3E3C3C; 
 }
 
 body {
-    font-family: "Roboto", sans-serif;
-    color: var(--textColor_1);
-    background-color: var(--backgroundColor);
+    font-family: 'Sans-serif Fonts', Verdana;
+    color: var(--black);
+    background-color: var(--black);
 }
 
 /* General spacing */
@@ -38,8 +36,8 @@ body *+* {
 
 /* Header styling */
 h1, h2 {
-    color: var(--primaryColor);
-    font-weight: bold;
+    color: var(--black);
+    font-weight: normal;
 }
 
 h1 {
@@ -51,8 +49,7 @@ h2 {
 }
 
 h3, p {
-    color: var(--textColor);
-    font-family: "Roboto", sans-serif;
+    font-family: "Roboto", Verdana;
 }
 
 p {
@@ -60,18 +57,19 @@ p {
 }
 
 h3 {
+    color: var(--black);
     font-size: var(--s1);
 }
 
 /* Sidebar styling */
 .stSidebar {
-    background-color: var(--backgroundColorSecondary);
+    background-color: var(--beige);
 }
 
 /* Buttons */
 button, .stButton button {
     background-color: var(--buttonColor);
-    color: var(--primaryColor);
+    color: var(--black);
     border: none;
     padding: 0.5rem 1rem;
     font-size: var(--s1);
@@ -87,38 +85,39 @@ button:hover, .stButton button:hover {
 .stTextInput, .stNumberInput, .stTextArea {
     background-color: var(--inputBackgroundColor);
     color: var(--textColor);
-    border: 1px solid var(--borderColor);
+    border: 1px solid var(--lightBeige);
     padding: 0.5rem;
     border-radius: 5px;
 }
 
-/* Main container layout */
-.stAppViewMain {
-    background-color: var(--backgroundColor);
-    padding: var(--s1);
-}
-
-.stAppViewBlockContainer {
-    background-color: var(--backgroundColorSecondary);
-    padding: var(--s2);
-    max-width: 1200px;
-    margin: 0 auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Custom styling for stMetric and columns */
-[data-testid|="stMetric"] {
-    margin-top: 0;
-    color: var(--primaryColor);
-}
-
-[data-testid|="column"] {
-    margin-top: var(--s-1);
-    margin-left: var(--s1);
-}
-
-/* Hide Streamlit header */
 [data-testid|="stHeader"] {
     display: none;
+  }
+
+/* Targeting Streamlit elements */
+[data-testid="stMarkdownContainer"] {
+    color: var(--white) !important;
+}
+
+[data-testid="stTextInput"] label {
+    color: var(--black) !important;
+}
+
+[data-testid="stNumberInput"] label {
+    color: var(--black) !important;
+}
+
+[data-testid="question-label"],
+[data-testid="max-retries-label"] {
+    color: var(--black) !important;
+}
+
+[data-testid="stAlertContainer"] {
+    background-color: var(--blue) !important;
+}
+
+[data-testid="stExceptionTraceRow"],
+[data-testid="stExceptionMessage"],
+[data-testid="stAlertContentError"] {
+    color: var(--white) !important;
 }
