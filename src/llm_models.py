@@ -11,19 +11,32 @@ MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama3.2:1b-instruct-fp16")
 TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", 0))
 FORMAT = os.getenv("LLM_FORMAT", None)
 
-def initialize_llm(model_name=MODEL_NAME, temperature=TEMPERATURE, format=None):
+class LLM:
+    _instance = None
+    _json_instance = None
 
-    try:
-        if format:
-            llm = ChatOllama(model=model_name, temperature=temperature, format=format)
+    def __new__(cls, format=None):
+        if format == "json":
+            if cls._json_instance is None:
+                cls._json_instance = super(LLM, cls).__new__(cls)
+                cls._json_instance._initialize(format)
+            return cls._json_instance
         else:
-            llm = ChatOllama(model=model_name, temperature=temperature)
-        logger.info(f"Initialized LLM with model: {model_name}, temperature: {temperature}, format: {format}")
-        return llm
-    except Exception as e:
-        logger.error(f"Failed to initialize LLM: {e}")
-        raise
+            if cls._instance is None:
+                cls._instance = super(LLM, cls).__new__(cls)
+                cls._instance._initialize(format)
+            return cls._instance
 
-# Initialize models
-llm = initialize_llm()
-llm_json_mode = initialize_llm(format="json")
+    def _initialize(self, format):
+        try:
+            if format:
+                self.llm = ChatOllama(model=MODEL_NAME, temperature=TEMPERATURE, format=format)
+            else:
+                self.llm = ChatOllama(model=MODEL_NAME, temperature=TEMPERATURE)
+            logger.info(f"Initialized LLM with model: {MODEL_NAME}, temperature: {TEMPERATURE}, format: {format}")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM: {e}")
+            raise
+
+    def invoke(self, messages):
+        return self.llm.invoke(messages)

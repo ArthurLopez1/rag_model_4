@@ -6,15 +6,15 @@ from typing import List, Dict, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from file_handler import load_document, split_document
-from vectorstore import VectorStoreManager
-from llm_models import initialize_llm
+from .file_handler import load_document, split_document
+from .vectorstore import VectorStoreManager
+from .llm_models import LLM
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.schema import Document
 from IPython.display import Image, display
 
 # Prompt and instructions setup
-router_instructions = """You are an expert at the Swedish language, Trafikverket (Swedish Transport Administration) and methereology.
+router_instructions = """You are an expert at Trafikverket (Swedish Transport Administration) and methereology.
 
 The vectorstore contains documents related to weather data collection, weather situation analyses, compensation calculation, and related fields of study.
 
@@ -30,7 +30,7 @@ doc_grader_prompt = """Here is the retrieved document: \n\n {document} \n\n Here
 
 Assess whether the document contains at least some information that is relevant to the question.
 
-Return JSON with a single key, binary_score, that is 'yes' or 'no' score to indicate whether the document contains at least some information that is relevant to the question."""
+Return JSON with a single key, binary_score, that is 'yes' or 'no' score to indicate whether the document contains at least one information that is relevant to the question."""
 
 rag_prompt = """You are an assistant for question-answering tasks in Swedish. 
 
@@ -86,8 +86,6 @@ Score:
 
 A score of yes means that the student's answer meets most of the criteria. This is the highest (best) score. 
 
-The student can receive a score of yes if the answer contains extra information that is not explicitly asked for in the question.
-
 A score of no means that the student's answer does not meet of the criteria at all. This is the lowest possible score you can give.
 
 Explain your reasoning in a step-by-step manner to ensure your reasoning and conclusion are correct. 
@@ -99,8 +97,8 @@ answer_grader_prompt = """QUESTION: \n\n {question} \n\n STUDENT ANSWER: {genera
 Return JSON with two keys, binary_score is 'yes' or 'no' score to indicate whether the STUDENT ANSWER meets the criteria. And a key, explanation, that contains an explanation of the score."""
 
 # Initialize the LLM once
-llm = initialize_llm()
-llm_json_mode = initialize_llm(format="json")
+llm = LLM()
+llm_json_mode = LLM(format="json")
 
 # Web Search Tool
 web_search_tool = TavilySearchResults(k=3)
@@ -133,9 +131,10 @@ def format_docs(docs):
         # Check if item has at least one element (the document text)
         if isinstance(item, tuple) and len(item) >= 1:
             doc = item[0]  # Get the document content
-            formatted_docs.append(doc)
         else:
-            print(f"Skipping improperly formatted item in docs: {item}")
+            # If the item is not properly formatted, convert it to a string
+            doc = str(item)
+        formatted_docs.append(doc)
     
     return "\n\n".join(formatted_docs)
 
@@ -154,7 +153,9 @@ def retrieve(state):
 
     # Write retrieved documents to documents key in state
     documents = VectorStoreManager().retrieve_documents(question)
-    return {"documents": documents}
+    state["documents"] = documents  # Ensure documents are added to state
+    print(f"Retrieved documents: {documents}")
+    return state
 
 def generate(state: Dict[str, Any], config: Dict[str, Any]):
     """
@@ -173,11 +174,11 @@ def generate(state: Dict[str, Any], config: Dict[str, Any]):
 
     # RAG generation
     docs_txt = format_docs(documents)
-    llm = initialize_llm()
     rag_prompt_formatted = rag_prompt.format(context=docs_txt, question=question)
     generation = llm.invoke([HumanMessage(content=rag_prompt_formatted)])
     state["generation"] = generation.content
     state["loop_step"] = loop_step + 1
+    print(f"Generated answer: {generation.content}")
     return state
 
 def grade_documents(state):
@@ -206,6 +207,7 @@ def grade_documents(state):
     web_search = "No" if relevant_doc_found else "Yes"
     state["documents"] = filtered_docs
     state["web_search"] = web_search
+    print(f"Filtered documents: {filtered_docs}")
     return state
 
 def web_search(state):
@@ -217,7 +219,9 @@ def web_search(state):
     web_results = "\n".join([d["content"] for d in docs])
     web_results = Document(page_content=web_results)
     documents.append(web_results)
-    return {"documents": documents}
+    state["documents"] = documents  # Ensure documents are added to state
+    print(f"Web search results: {documents}")
+    return state
 
 
 # edges
@@ -386,5 +390,6 @@ def run_workflow(state: Dict[str, Any], config: Dict[str, Any]):
     logger.info(f"Config: {config}")
     for event in graph.stream(state, stream_mode="values"):
         events.append(event)
+        logger.info(f"Event: {event}")
     logger.info(f"Events: {events}")
     return events

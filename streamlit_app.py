@@ -6,12 +6,18 @@ from src.vectorstore import VectorStoreManager
 from src.training import train_on_document
 from settings import Config
 from frontend.constants import Color
+from src.llm_models import LLM
+from src.simple_workflow import run_simple_workflow  
 
 # Initialize the configuration
 config = Config()
 
 # Initialize the vector store manager
 vec = VectorStoreManager()
+
+# Initialize models
+llm = LLM()
+llm_json_mode = LLM(format="json")
 
 # Load custom CSS
 def read_css():
@@ -35,10 +41,9 @@ if st.sidebar.button("Train Model"):
 # Main interface for asking questions
 st.header("Ask a question about the document:")
 st.markdown('<div data-testid="question-label">Enter your question here:</div>', unsafe_allow_html=True)
-question = st.text_input("", key="question_input")
+question = st.text_input("Question", key="question_input", label_visibility="collapsed")
 st.markdown('<div data-testid="max-retries-label">Max Retries</div>', unsafe_allow_html=True)
-max_retries = st.number_input("", min_value=1, max_value=10, value=3, key="max_retries_input")
-
+max_retries = st.number_input("Max Retries", min_value=1, max_value=10, value=3, key="max_retries_input", label_visibility="collapsed")
 
 if st.button("Get Answer"):
     # Define initial state and configuration
@@ -47,12 +52,21 @@ if st.button("Get Answer"):
         "max_retries": max_retries
     }
 
-    # Run the workflow
-    events = run_workflow(state, config)
+    # Run the simple workflow
+    events = run_simple_workflow(state)
 
     # Output the final generated answer
     final_state = events[-1] if events else {}
     generated_answer = final_state.get("generation", "No answer generated.")
-    st.write("Final Generated Answer:")
-    st.write(generated_answer)
+    st.markdown(f'<div class="generated-answer">{generated_answer}</div>', unsafe_allow_html=True)
     logger.info(f"Final state: {final_state}")
+    print(f"Final state: {final_state}")  # Ensure final state is printed to console
+
+    # Comment out the main workflow
+    # events = run_workflow(state, config)
+    # final_state = events[-1] if events else {}
+    # generated_answer = final_state.get("generation", "No answer generated.")
+    # st.write("Final Generated Answer:")
+    # st.write(generated_answer)
+    # logger.info(f"Final state: {final_state}")
+    # print(f"Final state: {final_state}")  # Ensure final state is printed to console

@@ -1,7 +1,7 @@
 import os
 import logging
 from venv import logger
-from src.llm_models import llm
+from src.llm_models import LLM
 from src.vectorstore import VectorStoreManager
 from src.components import run_workflow, initialize_graph
 from src.training import train_on_document
@@ -15,20 +15,19 @@ def main():
     # Initialize the vector store for querying
     vector_store = VectorStoreManager()
     
+    # Initialize models
+    llm = LLM()
+    llm_json_mode = LLM(format="json")
+
     # Define initial state and configuration
     state = {
         "question": "Hur ofta analyseras väderdata i VädErs-modellen?",
-        "max_retries": 3
+        "max_retries": 2
     }
     config = Config()  # Ensure config is initialized correctly
 
     # Run the workflow
     events = run_workflow(state, config)
-
-    # Output results
-    #print("Query Results:")
-    #for event in events:
-    #    print(event)
 
     # Output the final generated answer
     final_state = events[-1] if events else {}

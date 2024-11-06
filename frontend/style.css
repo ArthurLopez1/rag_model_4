@@ -82,7 +82,7 @@ button:hover, .stButton button:hover {
 }
 
 /* Input field styling */
-.stTextInput, .stNumberInput, .stTextArea {
+.stTextInput, .stNumberInput, .stTextArea { 
     background-color: var(--inputBackgroundColor);
     color: var(--textColor);
     border: 1px solid var(--lightBeige);
@@ -90,9 +90,9 @@ button:hover, .stButton button:hover {
     border-radius: 5px;
 }
 
-[data-testid|="stHeader"] {
+/*[data-testid|="stHeader"] {
     display: none;
-  }
+  }*/
 
 /* Targeting Streamlit elements */
 [data-testid="stMarkdownContainer"] {
@@ -120,4 +120,13 @@ button:hover, .stButton button:hover {
 [data-testid="stExceptionMessage"],
 [data-testid="stAlertContentError"] {
     color: var(--white) !important;
+}
+
+/* Custom styling for generated answer */
+.generated-answer {
+    color: var(--black) !important;
+    background-color: var(--lightBeige) !important;
+    padding: var(--s-1);
+    border-radius: 5px;
+    margin-top: var(--s-2);
 }
