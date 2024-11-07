@@ -5,7 +5,6 @@ from src.components import run_workflow
 from src.vectorstore import VectorStoreManager
 from src.training import train_on_document
 from settings import Config
-from frontend.constants import Color
 from src.llm_models import LLM
 from src.simple_workflow import run_simple_workflow  
 
@@ -52,17 +51,16 @@ if st.button("Get Answer"):
         "max_retries": max_retries
     }
 
-    # Run the simple workflow
-    events = run_simple_workflow(state)
 
-    # Output the final generated answer
+    # simple workflow
+    events = run_simple_workflow(state)
     final_state = events[-1] if events else {}
     generated_answer = final_state.get("generation", "No answer generated.")
     st.markdown(f'<div class="generated-answer">{generated_answer}</div>', unsafe_allow_html=True)
     logger.info(f"Final state: {final_state}")
     print(f"Final state: {final_state}")  # Ensure final state is printed to console
 
-    # Comment out the main workflow
+    # main workflow
     # events = run_workflow(state, config)
     # final_state = events[-1] if events else {}
     # generated_answer = final_state.get("generation", "No answer generated.")
